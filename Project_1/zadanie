@@ -1,0 +1,119 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ParalelnĂ­ SED
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+VytvoĹte program zaloĹženĂ˝ na vlĂĄknech, kterĂ˝ bude provĂĄdÄt paralelnĂ­ sed. VĂ˝slednĂĄ binĂĄrka "psed"
+bude mĂ­t i vstupnĂ­ch parametrĹŻ (priklady vstupu naleznete v souboru tests.txt):
+
+pgrep RE1 REPL1 [ RE2 REPL2 ] [ RE3  REPL3 ] ...
+
+RE: regulĂĄrnĂ­ vĂ˝raz (uvaĹžujme regulĂĄrnĂ­ vĂ˝razy uĹžĂ­vanĂŠ v C++11)
+
+MinimĂĄlnĂ­ poÄet parametrĹŻ je 1, maximĂĄlnĂ­ nenĂ­ omezen.
+
+Program psed funguje nasledovne:
+1) HlavnĂ­ vlĂĄkno naÄte ĹĂĄdek ze standardnĂ­ho vstupu.
+2) PĹedĂĄ ĹĂ­zenĂ­ pracovnĂ­m vlĂĄknĹŻm, kde kaĹždĂŠ z nich provede nĂĄhradu rĂĄdku ze vstupu pomocĂ­ regulĂĄrnĂ­ho vĂ˝razu "REi". VĂ˝sledek bude REPLi
+3) PracovnĂ­ vlĂĄkna vytisknou vĂ˝sledek na standardnĂ­ vstup, a to v poĹadĂ­ danĂŠm parametry vstupu -- tedy vĂ˝sledek dle 
+   RE1 je vytisknut prvnĂ­, nĂĄsleduje vĂ˝sledek zĂĄmÄny dle RE2, atd.
+4) PracovnĂ­ vlĂĄka pĹedajĂ­ rĂ­zenĂ­ hlavnĂ­mu vlĂĄknu
+5) Pokud je na vstupu dalĹĄĂ­ ĹĂĄdka, tak se pokraÄuje bodem 1.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+PĹĂ­klad
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+MÄjme nĂĄsledujĂ­cĂ­ vstup:
+------------------
+Ahoj, tohle je pokus
+jestli to bude fungovat 23
+211 je vysledek
+
+------------------
+
+./psed '(.*) tohle (.*)' '$2 XX $1' 'je ' 'byl '
+
+VĂ˝sledek je nĂĄsledujĂ­cĂ­:
+------------------
+je pokus XX Ahoj,
+Ahoj, tohle byl pokus
+jestli to bude fungovat 23
+jestli to bude fungovat 23
+211 je vysledek
+211 byl vysledek
+
+
+------------------
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+VĂ˝poÄet bude probĂ­hat nĂĄsledovnÄ:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+1) SpusĂ­ se "k" vlĂĄken, kaĹždĂŠ pro jeden regulĂĄrnĂ­ vĂ˝raz. VlĂĄkna ÄekajĂ­, aĹž jim bude pĹedĂĄno ĹĂ­zenĂ­ hlavnĂ­m vlĂĄknem.
+2) HlavnĂ­ vlĂĄkno naÄte jednu ĹĂĄdku ze vstupu.
+3) Pokud na vstupu ĹžĂĄdnĂĄ ĹĂĄdka nebyla, jsou vĹĄechna vlĂĄkna probuzena a korektnÄ ukonÄena. CelĂ˝ program konÄĂ­.
+4) ĹĂ­zenĂ­ pĹedĂĄno vlĂĄknĹŻm pro aplikaci reg. vĂ˝razu a vlĂĄkna __paralelnÄ__ tuto aplikaci provĂĄdĂ­.
+5) VlĂĄkna vypĂ­ĹĄĂ­ vĂ˝sledeky ve sprĂĄvnĂŠm poĹadĂ­.
+6) ĹĂ­zenĂ­ je pĹedĂĄno zpÄt hlavnĂ­mu vlĂĄknu.
+7) PokraÄuje se bodem 2.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+PoĹžadavky na implementaci:
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Program musĂ­ splĹovat nĂĄsledujĂ­cĂ­ poĹžadavky:
+1) Pro kaĹždĂ˝ RE na vstupu se na zaÄĂĄtku spustĂ­ jedno vlĂĄkno a to bÄĹžĂ­ aĹž do konce
+2) V rĂĄmci jednoho vlĂĄkna lze provĂĄdÄt aplikaci pouze jednoho RE. 
+3) Pro aplikaci regulĂĄrnĂ­ho vĂ˝razu pouĹžijte "#include <regex>" a "std::regex_replace(string,REi,REPLi)" --- viz priklad z democvika na regulĂĄrnĂ­ vĂ˝razy.
+3a) MĹŻĹžete pouĹžĂ­t i jinou knihovnu pro prĂĄci s Reg vĂ˝razy.
+4) Pro komunikaci mezi vlĂĄkny vyuĹžijte globĂĄlnĂ­ promÄnnĂĄ a pro synchronizaci mutexy (pthread mutex, nebo
+C++ mutex).
+5) VlĂĄkna mohou aktivnÄ Äekat:
+	mutex.lock();
+	white (x!=1) {
+		mutex.unlock();
+		mutex.lock();
+	}
+	mutex.unlock();
+		
+
+DĂĄvejte pozor na data race (vstup, score, promÄnnĂŠ pro komunikaci ...) a deadlock.
+NenĂ­ problĂŠm, aby vĂ­ce vlĂĄken najednou Äetlo ze stejnĂŠ globĂĄlnĂ­ promÄnnĂŠ, ale pokud se zapisuje, je tĹeba zajistit atomicitu.
+
+Za ĂşÄelem testovĂĄnĂ­ mĹŻĹžete vloĹžit na vhodnĂĄ mĂ­sta do kĂłdu usleep(1). V odevzdanĂŠm kĂłdu jiĹž usleep nebude.
+
+Implementace bude napsĂĄna v jazyce C s moĹžnostĂ­ pouĹžitĂ­ nĂĄsledujĂ­cĂ­ch komponent jazyka C++:
+
+- regulĂĄrnĂ­ vĂ˝razy z C++11 (#include <regex>)
+- vlĂĄkna a zĂĄmky z C++11 (#include <thread>, #include <mutex>)
+- pole promÄnnĂŠ dĂŠlky z C++11 (#include <vector>) pro uchovĂĄnĂ­ threadĹŻ a zĂĄmkĹŻ.
+- funkce int read_input_line(char *) ze souboru kostra_psed.c
+- funkce char *to_cstr(std::string a) ze souboru kostra_psed.c
+
+PĹeklad bude provĂĄdÄn buÄ:
+$ gcc psed.c -o psed -lpthread
+nebo
+$ g++ psed.c -o psed -lpthread
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Kostra programu a vzorovĂŠ ĹeĹĄenĂ­
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+V adresĂĄĹi /homes/kazi/rogalew/verifikace/IPS-projekt2 naleznete nĂĄsledujĂ­cĂ­ soubory:
+* psed - vzorovĂŠ ĹeĹĄenĂ­
+* tests.txt - testy
+* kompilace.txt - jak zkompilovat
+* kostra_psed.c - zĂĄkladnĂ­ kostra programu, ze kterĂŠ mĹŻĹžete vyjĂ­t. VytvĂĄĹĂ­ pole vlĂĄken a pole zĂĄnkĹŻ a nĂĄslednÄ je ruĹĄĂ­. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+OdevzdĂĄnĂ­
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Jeden soubor psed.c odevzdejte do Ätvrtka 18.10. do 12:00 prostĹednictvĂ­m WISu k pĹĂ­sluĹĄnĂŠmu termĂ­nu.
+Na seminĂĄĹi dne 18.10. bude pĹedstaveno vzorovĂŠ ĹeĹĄenĂ­.
+
+
