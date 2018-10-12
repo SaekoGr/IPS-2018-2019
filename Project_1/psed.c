@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
 	 * Inicializace threadu a zamku
 	 * *****************************/
 	int re_count = ((argc - 1) / 2); // Number of regular expressions  
-	int num_zamky = 15;
+	int num_zamky = 15; //tba
 	std::vector <std::thread *> threads; /* pole threadu promenne velikosti */
 
 	/* vytvorime zamky */
