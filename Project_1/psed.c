@@ -3,15 +3,17 @@
 #include<thread>
 #include<queue>
 #include<mutex>
+#include<string>
 #include<vector>
-#include <iostream>
+#include<iostream>
 #include<string.h>
 
+#define PRINT
+#define READ
 
-
+char **argv;
 std::vector<std::mutex *> zamky; /* pole zamku promenne velikosti */
-
-char *line;
+char *line = NULL;
 
 char *to_cstr(std::string a) {
 	// prevede retezec v c++ do retezce v "c" (char *)
@@ -34,18 +36,18 @@ char *read_line(int *res) {
 	}
 
 }
-
-void f(int ID) {
-	/* funkce implementujici thread */
-	printf("Thread %i started\n",ID);
+/* Function performs work of the single thread, parameters: ID - number of thread, line - pointer to the currently read line, args - list of arguments */
+void thread_regex_solve(int ID) {
+	std::string re(argv[ID * 2 - 1]);
+	std::string repl(argv[ID * 2]);
 }
 
 // TODO: failed thread malloc
-void create_threads(std::vector <std::thread *> threads, int re_count) 
-{
+void create_threads(std::vector <std::thread *> threads, int re_count) {
+	threads.resize(re_count); 
 	for(int i = 0; i < re_count; i++){	
-	std::thread *new_thread = new std::thread (f,i);
-	threads[i] = new_thread;
+		std::thread *new_thread = new std::thread (thread_regex_solve, i + 1);
+		threads[i] = new_thread;
 	}
 }
 
@@ -60,6 +62,8 @@ int main(int argc, char* argv[]) {
 		fprintf(stderr, "There must be an even number of parameters\n");
 		return 1;
 	}
+
+	::argv = argv;
 
 	/*******************************
 	 * Inicializace threadu a zamku
@@ -76,25 +80,25 @@ int main(int argc, char* argv[]) {
 	}
 
 	/* vytvorime thready */
-	threads.resize(num); /* nastavime si velikost pole threads */
+
 	/**********************************
 	 * Vlastni vypocet psed
 	 * ********************************/
 	int res;
 	line = read_line(&res);
+	create_threads(threads, re_count);
 	while (res) {
-		create_threads(threads, re_count);
+		printf("%s\n",line);
 		free(line); /* uvolnim pamet */
 		line = read_line(&res);
 	}
 
-
 	/**********************************
 	 * Uvolneni pameti
 	 * ********************************/
-
+	
 	/* provedeme join a uvolnime pamet threads */
-	for(int i=0;i<num;i++){
+	for(int i=0;i < re_count;i++){
 		(*(threads[i])).join();
 		delete threads[i];
 	}
