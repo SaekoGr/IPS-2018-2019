@@ -55,11 +55,11 @@ int main(int argc, char* argv[]) {
 	
 	// check whether we have at least 2 parameters
 	if(argc < 3){
-		fprintf(stderr, "Not enough parameters\n");
+		fprintf(stderr, "ERROR: Not enough parameters\n");
 		return 1;
 	} // check whether we have even number of parameters
 	else if((argc-1) % 2){
-		fprintf(stderr, "There must be an even number of parameters\n");
+		fprintf(stderr, "ERROR: There must be an even number of parameters\n");
 		return 1;
 	}
 
@@ -79,14 +79,25 @@ int main(int argc, char* argv[]) {
 		zamky[i] = new_zamek;
 	}
 
-	/* vytvorime thready */
+	// this works when in main
+	threads.resize(re_count); 
+	for(int i = 0; i < re_count; i++){	
+		std::thread *new_thread = new std::thread (thread_regex_solve, i + 1);
+		if(new_thread == NULL){
+			fprintf(stderr, "ERROR: Failed to create thread!\n");
+			exit(1);
+		}
+		else
+			threads[i] = new_thread;
+	}
 
 	/**********************************
 	 * Vlastni vypocet psed
 	 * ********************************/
 	int res;
 	line = read_line(&res);
-	create_threads(threads, re_count);
+	// this doesn't seem to work when in function - no idea why
+	//create_threads(threads, re_count);
 	while (res) {
 		printf("%s\n",line);
 		free(line); /* uvolnim pamet */

@@ -10,3 +10,5 @@
 
 ./psed 'psed' 'projekt' '\+\+' '--' < zadani.txt
 ./psed 'psed' 'projekt' '\+\+' '--' '<(.*)>' '>$1<' < zadani.txt
+
+./psed '(.*) tohle (.*)' '$2 XX $1' 'je ' 'byl '
