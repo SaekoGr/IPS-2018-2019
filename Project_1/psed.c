@@ -7,6 +7,11 @@
 #include<vector>
 #include<iostream>
 #include<string.h>
+#include<iostream>
+#include<string>
+using namespace std;
+#include<regex>
+//#include<iterator>
 
 #define PRINT
 #define READ
@@ -33,23 +38,24 @@ char *read_line(int *res) {
 	} else {
 		*res=0;
 		return NULL;
-	}
 
+	}
 }
+
+
 /* Function performs work of the single thread, parameters: ID - number of thread, line - pointer to the currently read line, args - list of arguments */
-void thread_regex_solve(int ID) {
-	std::string re(argv[ID * 2 - 1]);
-	std::string repl(argv[ID * 2]);
+void f(int ID, char tr[], char nr[]) {
+	printf("My ID is: %d , I look for: %s  and want to replace it with: %s\n", ID, tr, nr);
+	
+	string to_replace = tr;
+	std::regex reg(to_replace);
+	string new_regex = nr;
+	
+	std::string result = std::regex_replace(line, reg, new_regex);
+	std::cout << result << '\n';
+	printf("%s\n", line);
 }
 
-// TODO: failed thread malloc
-void create_threads(std::vector <std::thread *> threads, int re_count) {
-	threads.resize(re_count); 
-	for(int i = 0; i < re_count; i++){	
-		std::thread *new_thread = new std::thread (thread_regex_solve, i + 1);
-		threads[i] = new_thread;
-	}
-}
 
 int main(int argc, char* argv[]) {
 	
@@ -79,10 +85,13 @@ int main(int argc, char* argv[]) {
 		zamky[i] = new_zamek;
 	}
 
-	// this works when in main
+
+	
 	threads.resize(re_count); 
 	for(int i = 0; i < re_count; i++){	
-		std::thread *new_thread = new std::thread (thread_regex_solve, i + 1);
+		char* to_replace = argv[(i+1) * 2 - 1];
+		char* new_regex = argv[(i+1) * 2];
+		std::thread *new_thread = new std::thread (f, i + 1, to_replace, new_regex);
 		if(new_thread == NULL){
 			fprintf(stderr, "ERROR: Failed to create thread!\n");
 			exit(1);
@@ -96,8 +105,6 @@ int main(int argc, char* argv[]) {
 	 * ********************************/
 	int res;
 	line = read_line(&res);
-	// this doesn't seem to work when in function - no idea why
-	//create_threads(threads, re_count);
 	while (res) {
 		printf("%s\n",line);
 		free(line); /* uvolnim pamet */
