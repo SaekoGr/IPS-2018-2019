@@ -51,9 +51,9 @@ void f(int ID, char tr[], char nr[]) {
 	std::regex reg(to_replace);
 	string new_regex = nr;
 	
-	std::string result = std::regex_replace(line, reg, new_regex);
-	std::cout << result << '\n';
-	printf("%s\n", line);
+	//std::string result = std::regex_replace(line, reg, new_regex);
+	//std::cout << result << '\n';
+	//printf("%s\n", line);
 }
 
 
