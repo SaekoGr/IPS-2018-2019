@@ -49,7 +49,7 @@ char *read_line(int *res) {
 
 
 /* Function performs work of the single thread, parameters: ID - number of thread, , wasPrinted - boolean if the output was printed out */
-void f(int ID, char tr[], char nr[], bool *wasPrinted) {
+void f(int ID, char tr[], char nr[], bool *wasPrinted, int re_count) {
 	currentline.lock(); // threads needs to wait for first line
 	currentline.unlock(); // if line was read, threads need to unlock the mutex so no deadlock occures
 	while(line != NULL) {
@@ -63,9 +63,12 @@ void f(int ID, char tr[], char nr[], bool *wasPrinted) {
 
 		print.lock(); // printing out the output must also be in mutex also critical section
 		printf("toto je výsledok regex: %d \n",ID);
-		*wasPrinted = true; // output was printed, bool is true now
 		print.unlock(); // unlocking the print mutex
 
+		if(ID != (re_count - 1))
+		{
+			printing[ID + 1]->unlock();
+		}
 	}
 	/*string to_replace = tr;
 	std::regex reg(to_replace);
@@ -117,7 +120,7 @@ int main(int argc, char* argv[]) {
 	for(int i = 0; i < re_count; i++){	
 		char* to_replace = argv[(i+1) * 2 - 1];
 		char* new_regex = argv[(i+1) * 2];
-		std::thread *new_thread = new std::thread (f, i, to_replace, new_regex, &wasPrinted[i]);
+		std::thread *new_thread = new std::thread (f, i, to_replace, new_regex, &wasPrinted[i],re_count);
 		if(new_thread == NULL){
 			fprintf(stderr, "ERROR: Failed to create thread!\n");
 			exit(1);
@@ -139,11 +142,8 @@ int main(int argc, char* argv[]) {
 		finished = 0; // must reset the finished count for next line
 		free(line); // threads are locked here and finished with work we can deallocate line
 		line = read_line(&res); // read new line threads are still locked
-		for(int i = 0; i < re_count; i++){ // now the treads needs to be unlocked and print result in correct order
-			printing[i]->unlock(); // unlocking threads one by one in correct order to print the result
-			while(wasPrinted[i] != true); // since the first thread maybe still did not show the result and we cannot unlock the thread program needs to wait until the regex is printed
-			wasPrinted[i] = false; // regex was printed, now needs to reset the boolean for next lines 
-		}
+		
+		printing[0]->unlock();
 	}
 
 	/**********************************
