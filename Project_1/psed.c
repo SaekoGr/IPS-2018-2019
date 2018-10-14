@@ -60,7 +60,7 @@ void f(int ID, char tr[], char nr[], bool *wasPrinted) {
 		increment.unlock();
 
 		printing[ID]->lock(); // thread is finished with work, now needs to lock and wait until the main proccess doesnt call the thread to print the output
-		
+
 		print.lock(); // printing out the output must also be in mutex also critical section
 		printf("toto je výsledok regex: %d \n",ID);
 		*wasPrinted = true; // output was printed, bool is true now
