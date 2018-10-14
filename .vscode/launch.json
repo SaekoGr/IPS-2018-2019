@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/Project_1/psed",
-            "args": ["caw","kek", "<", "sudoers"],
+            "args": ["caw","kek"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

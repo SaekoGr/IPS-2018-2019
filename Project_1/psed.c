@@ -13,12 +13,17 @@ using namespace std;
 #include<regex>
 //#include<iterator>
 
-#define PRINT
-#define READ
+#define LINE 0
+#define WORKING 1
+#define PRINTING 2
 
-char **argv;
-std::vector<std::mutex *> zamky; /* pole zamku promenne velikosti */
+std::vector<std::mutex *> printing; /* pole zamku promenne velikosti */
+std::mutex currentline; // mutex for first line 
+std::mutex increment; // mutex for incrementing variable in critical section
+std::mutex print; // mutex for printing out the output
+int finished = 0;
 char *line = NULL;
+
 
 char *to_cstr(std::string a) {
 	// prevede retezec v c++ do retezce v "c" (char *)
@@ -43,17 +48,32 @@ char *read_line(int *res) {
 }
 
 
-/* Function performs work of the single thread, parameters: ID - number of thread, line - pointer to the currently read line, args - list of arguments */
-void f(int ID, char tr[], char nr[]) {
-	printf("My ID is: %d , I look for: %s  and want to replace it with: %s\n", ID, tr, nr);
-	
-	string to_replace = tr;
+/* Function performs work of the single thread, parameters: ID - number of thread, , wasPrinted - boolean if the output was printed out */
+void f(int ID, char tr[], char nr[], bool *wasPrinted) {
+	currentline.lock(); // threads needs to wait for first line
+	currentline.unlock(); // if line was read, threads need to unlock the mutex so no deadlock occures
+	while(line != NULL) {
+		//here goes regex work
+		// bla bla regex replace bla bla
+		increment.lock(); // regex work is finished now needs to increment the global variable
+		finished++;
+		increment.unlock();
+
+		printing[ID]->lock(); // thread is finished with work, now needs to lock and wait until the main proccess doesnt call the thread to print the output
+		
+		print.lock(); // printing out the output must also be in mutex also critical section
+		printf("toto je výsledok regex: %d \n",ID);
+		*wasPrinted = true; // output was printed, bool is true now
+		print.unlock(); // unlocking the print mutex
+
+	}
+	/*string to_replace = tr;
 	std::regex reg(to_replace);
 	string new_regex = nr;
 	
 	std::string result = std::regex_replace(line, reg, new_regex);
 	std::cout << result << '\n';
-	printf("%s\n", line);
+	printf("%s\n", line);*/
 }
 
 
@@ -69,29 +89,35 @@ int main(int argc, char* argv[]) {
 		return 1;
 	}
 
-	::argv = argv;
-
 	/*******************************
 	 * Inicializace threadu a zamku
 	 * *****************************/
 	int re_count = ((argc - 1) / 2); // Number of regular expressions  
-	int num_zamky = 15; //tba
+	bool wasPrinted[re_count]; // this array is making sure that output is printed in good order
+	// no output was printed so whole bool array needs to be false
+	for(int i = 0; i < re_count; i++) {
+		wasPrinted[i] = false;
+	}
+
 	std::vector <std::thread *> threads; /* pole threadu promenne velikosti */
 
 	/* vytvorime zamky */
-	zamky.resize(num_zamky); /* nastavime si velikost pole zamky */
-	for(int i=0; i<num_zamky; i++){	
-		std::mutex *new_zamek = new std::mutex();
-		zamky[i] = new_zamek;
-	}
+	printing.resize(re_count); // all thread need their own priting and working mutexes
 
+	for(int i=0; i<re_count; i++){	
+		std::mutex *new_zamek = new std::mutex();
+		printing[i] = new_zamek; // Printing mutex needs to be locked from start
+		printing[i]->lock();
+	}
+	
+	currentline.lock(); // line was still not loaded , threads needs to wait for line
 
 	
 	threads.resize(re_count); 
 	for(int i = 0; i < re_count; i++){	
 		char* to_replace = argv[(i+1) * 2 - 1];
 		char* new_regex = argv[(i+1) * 2];
-		std::thread *new_thread = new std::thread (f, i + 1, to_replace, new_regex);
+		std::thread *new_thread = new std::thread (f, i, to_replace, new_regex, &wasPrinted[i]);
 		if(new_thread == NULL){
 			fprintf(stderr, "ERROR: Failed to create thread!\n");
 			exit(1);
@@ -105,10 +131,19 @@ int main(int argc, char* argv[]) {
 	 * ********************************/
 	int res;
 	line = read_line(&res);
+	
+	currentline.unlock(); // line was read, we can unlock the threads
+
 	while (res) {
-		printf("%s\n",line);
-		free(line); /* uvolnim pamet */
-		line = read_line(&res);
+		while(finished != re_count); // active waiting until the regex work is done
+		finished = 0; // must reset the finished count for next line
+		free(line); // threads are locked here and finished with work we can deallocate line
+		line = read_line(&res); // read new line threads are still locked
+		for(int i = 0; i < re_count; i++){ // now the treads needs to be unlocked and print result in correct order
+			printing[i]->unlock(); // unlocking threads one by one in correct order to print the result
+			while(wasPrinted[i] != true); // since the first thread maybe still did not show the result and we cannot unlock the thread program needs to wait until the regex is printed
+			wasPrinted[i] = false; // regex was printed, now needs to reset the boolean for next lines 
+		}
 	}
 
 	/**********************************
@@ -121,8 +156,8 @@ int main(int argc, char* argv[]) {
 		delete threads[i];
 	}
 	/* uvolnime pamet zamku */
-	for(int i=0;i<num_zamky;i++){
-		delete zamky[i];
+	for(int i=0;i<re_count;i++){
+		delete printing[i];
 	}
 
 }
