@@ -9,28 +9,21 @@
 #include<string.h>
 #include<iostream>
 #include<string>
-using namespace std;
 #include<regex>
-//#include<iterator>
-
-#define LINE 0
-#define WORKING 1
-#define PRINTING 2
 
 std::vector<std::mutex *> printing, working; /* pole zamku promenne velikosti */
 std::mutex currentline; // mutex for first line 
 std::mutex print; // mutex for printing out the output
 char *line = NULL;
 
-
+// function recreates c++ string to c string
 char *to_cstr(std::string a) {
-	// prevede retezec v c++ do retezce v "c" (char *)
 	char *str;
 	str=(char *) malloc(sizeof(char)*(a.length()+1));
 	strcpy(str,a.c_str());
 	return str;
 }
-
+// function reads first line from input pipeline
 char *read_line(int *res) {
 	std::string line;
 	char *str;
@@ -38,28 +31,27 @@ char *read_line(int *res) {
 		str=to_cstr(line);
 		*res=1;
 		return str;
-	} else {
+	} 
+	else {
 		*res=0;
 		return NULL;
 
 	}
 }
 
-
-/* Function performs work of the single thread, parameters: ID - number of thread, , wasPrinted - boolean if the output was printed out */
-void f(int ID, char tr[], char nr[], bool *wasPrinted, int re_count) {
+// Function performs work of the single thread, parameters: ID - number of thread, tr - string to replace,  re_count - number of threads working
+void f(int ID, char tr[], char nr[], int re_count) {
 	currentline.lock(); // threads needs to wait for first line
 	currentline.unlock(); // if line was read, threads need to unlock the mutex so no deadlock occures
+
 	while(line != NULL) {
-		string to_replace = tr;
+		// Regex work and replacing
+		std::string to_replace = tr;
 		std::regex reg(to_replace);
-		string new_regex = nr;
+		std::string new_regex = nr;
 
 		std::string result = std::regex_replace(line, reg, new_regex);
-		//std::cout << result << '\n';
-		//printf("%s\n", line);
-		//here goes regex work
-		// bla bla regex replace bla bla
+
 		working[ID]->unlock();
 		printing[ID]->lock(); // thread is finished with work, now needs to lock and wait until the main proccess doesnt call the thread to print the output
 
@@ -67,18 +59,10 @@ void f(int ID, char tr[], char nr[], bool *wasPrinted, int re_count) {
 		std::cout << result << '\n';
 		print.unlock(); // unlocking the print mutex
 
-		if(ID != (re_count - 1)) // every single thread will unlock the next one
-		{
+		if(ID != (re_count - 1)) {// every single thread will unlock the next one
 			printing[ID + 1]->unlock();
 		}
 	}
-	/*string to_replace = tr;
-	std::regex reg(to_replace);
-	string new_regex = nr;
-	
-	std::string result = std::regex_replace(line, reg, new_regex);
-	std::cout << result << '\n';
-	printf("%s\n", line);*/
 }
 
 
@@ -98,12 +82,6 @@ int main(int argc, char* argv[]) {
 	 * Inicializace threadu a zamku
 	 * *****************************/
 	int re_count = ((argc - 1) / 2); // Number of regular expressions  
-	bool wasPrinted[re_count]; // this array is making sure that output is printed in good order
-	// no output was printed so whole bool array needs to be false
-	for(int i = 0; i < re_count; i++) {
-		wasPrinted[i] = false;
-	}
-
 	std::vector <std::thread *> threads; /* pole threadu promenne velikosti */
 
 	/* vytvorime zamky */
@@ -128,7 +106,7 @@ int main(int argc, char* argv[]) {
 	for(int i = 0; i < re_count; i++){	
 		char* to_replace = argv[(i+1) * 2 - 1];
 		char* new_regex = argv[(i+1) * 2];
-		std::thread *new_thread = new std::thread (f, i, to_replace, new_regex, &wasPrinted[i],re_count);
+		std::thread *new_thread = new std::thread (f, i, to_replace, new_regex, re_count);
 		if(new_thread == NULL){
 			fprintf(stderr, "ERROR: Failed to create thread!\n");
 			exit(1);
@@ -146,8 +124,7 @@ int main(int argc, char* argv[]) {
 	currentline.unlock(); // line was read, we can unlock the threads
 
 	while (res) {
-		for(int i = 0; i < re_count ; i++)
-		{
+		for(int i = 0; i < re_count ; i++) {
 			working[i]->lock(); // waiting for every single each thread to finish
 		}
 		free(line); // threads are locked here and finished with work we can deallocate line
@@ -169,5 +146,4 @@ int main(int argc, char* argv[]) {
 	for(int i=0;i<re_count;i++){
 		delete printing[i];
 	}
-
 }
