@@ -51,13 +51,20 @@ void f(int ID, char tr[], char nr[], bool *wasPrinted, int re_count) {
 	currentline.lock(); // threads needs to wait for first line
 	currentline.unlock(); // if line was read, threads need to unlock the mutex so no deadlock occures
 	while(line != NULL) {
+		string to_replace = tr;
+		std::regex reg(to_replace);
+		string new_regex = nr;
+
+		std::string result = std::regex_replace(line, reg, new_regex);
+		//std::cout << result << '\n';
+		//printf("%s\n", line);
 		//here goes regex work
 		// bla bla regex replace bla bla
 		working[ID]->unlock();
 		printing[ID]->lock(); // thread is finished with work, now needs to lock and wait until the main proccess doesnt call the thread to print the output
 
 		print.lock(); // printing out the output must also be in mutex also critical section
-		printf("toto je výsledok regex: %d \n",ID);
+		std::cout << result << '\n';
 		print.unlock(); // unlocking the print mutex
 
 		if(ID != (re_count - 1)) // every single thread will unlock the next one
