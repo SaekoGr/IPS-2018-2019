@@ -1,3 +1,12 @@
+/**
+ * Parallel calculation of SED *
+ * Made for subject Programming Seminar
+ * @BUT FIT 2018
+ * Authors:
+ * Tomáš Sasák - xsasak01 
+ * Sabína Gregušová - xgregu02
+ */
+
 #include<stdio.h>
 #include<unistd.h>
 #include<thread>
