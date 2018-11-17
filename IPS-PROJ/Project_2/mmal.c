@@ -7,6 +7,7 @@
 #include "mmal.h"
 #include <sys/mman.h> // mmap
 #include <stdbool.h> // bool
+#include <assert.h>
 
 #ifdef NDEBUG
 /**
@@ -57,10 +58,11 @@ Arena *first_arena = NULL;
  */
 static
 size_t allign_page(size_t size)
-{
-    // FIXME
-    (void)size;
-    return size;
+{   
+    assert(size > 0); // it must be bigger than 0
+    // PAGE_SIZE is 128*1024 = 131 072 and we should align it by it
+    // Formula is: (size + align_size - 1)/align_size * align_size 
+    return ((size+131071)/131072*131072);
 }
 
 /**
@@ -79,9 +81,30 @@ size_t allign_page(size_t size)
 static
 Arena *arena_alloc(size_t req_size)
 {
-    // FIXME
-    (void)req_size;
-    return NULL;
+    // variable for arena and aligned size
+    Arena* new_arena = NULL;
+    Arena* tmp = NULL;
+    size_t aligned_size = allign_page(req_size);
+    int fd = -1; // TODO - what should this number be?
+
+    new_arena = mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); // TODO - check tha parameters
+    new_arena->next = NULL;
+    new_arena->size = aligned_size;
+
+    if(first_arena == NULL){    // first added arena
+        new_arena->next = new_arena;
+        first_arena = new_arena;    // first arena is assigned
+    }
+    else{                       // all the other arenas
+        tmp = first_arena;
+        while(tmp->next != first_arena){    // find the last element that points to first arena
+            tmp = tmp->next;
+        }
+        tmp->next = new_arena;              // bind the cyclical list together
+        new_arena->next = first_arena;
+    }
+    
+    return new_arena;
 }
 
 /**
