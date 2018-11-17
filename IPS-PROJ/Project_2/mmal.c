@@ -83,18 +83,19 @@ Arena *arena_alloc(size_t req_size)
 {
     // variable for arena and aligned size
     Arena* new_arena = NULL;
+    Arena my_arena;
+    new_arena = &my_arena;
     Arena* tmp = NULL;
     size_t aligned_size = allign_page(req_size);
     int fd = -1; // TODO - what should this number be?
-
 
     /**
      * MMAP is used as: in real malloc:
      * mmap (addr, size, prot, flags|MAP_ANONYMOUS|MAP_PRIVATE, -1, 0)
      * so I leave it like this for now
      */
-    new_arena = mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0); // TODO - check tha parameters
-    if(new_arena == NULL)           // failed mmap
+    new_arena = mmap(0, aligned_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, fd, 0); // TODO - check tha parameters
+    if(new_arena == MAP_FAILED)           // failed mmap
         return NULL;
 
     new_arena->next = NULL;
@@ -169,16 +170,23 @@ Header *hdr_split(Header *hdr, size_t req_size)
 {
     // check the pre-conditions first
     if(req_size % PAGE_SIZE == 0)
-        return hdr; // should we return NULL or the right block?
+        return NULL; // should we return NULL or the right block?
     if(hdr->size >= (req_size + 2*sizeof(Header)))
-        return hdr;
+        return NULL;
 
-    
+    int new_size = hdr->size - sizeof(Header);
+    hdr->asize = req_size;
+
+    Header* new_header;
+    hdr_ctor(new_header, new_size);
+
+    new_header->next = hdr->next;
+    hdr->next = new_header;
 
     // FIXME
     //(void)hdr;
     //(void)req_size;
-    return NULL;
+    return new_header;
 }
 
 /**
@@ -216,13 +224,33 @@ void hdr_merge(Header *left, Header *right)
  */
 void *mmalloc(size_t size)
 {
+    Header* my_header;
+    hdr_ctor(my_header, size);  // constructor of header
+    Arena* found_arena;
+    my_header = first_arena;
+
+    bool found = false;
+
     // we should add the algoritms as follows:
     if(first_arena == NULL){    // first allocation
-        arena_alloc(PAGE_SIZE);
+        found_arena = arena_alloc(PAGE_SIZE);
     }
     else{                       // search through the existing arenas and find the best fit
         ;                       // if not possible to find, allocate new arenas
+        // try to do hdr_split, if it doesn't work, allocate new arena
+        if(my_header->next == my_header){   // there is only one header
+
+        }
+        else{                               // while search for header
+
+        }
     }
+
+    
+    my_header = found_arena;
+
+    my_header->next = my_header;
+
     // FIXME
     (void)size;
     return NULL;
