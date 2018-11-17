@@ -87,21 +87,29 @@ Arena *arena_alloc(size_t req_size)
     size_t aligned_size = allign_page(req_size);
     int fd = -1; // TODO - what should this number be?
 
-    new_arena = mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0); // TODO - check tha parameters
+
+    /**
+     * MMAP is used as: in real malloc:
+     * mmap (addr, size, prot, flags|MAP_ANONYMOUS|MAP_PRIVATE, -1, 0)
+     * so I leave it like this for now
+     */
+    new_arena = mmap(NULL, aligned_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0); // TODO - check tha parameters
+    if(new_arena == NULL)           // failed mmap
+        return NULL;
+
     new_arena->next = NULL;
     new_arena->size = aligned_size;
 
-    if(first_arena == NULL){    // first added arena
-        new_arena->next = new_arena;
+
+    if(first_arena == NULL){        // first added arena
         first_arena = new_arena;    // first arena is assigned
     }
-    else{                       // all the other arenas
+    else{                           // all the other arenas
         tmp = first_arena;
-        while(tmp->next != first_arena){    // find the last element that points to first arena
+        while(tmp->next != NULL){    // find the last element
             tmp = tmp->next;
         }
-        tmp->next = new_arena;              // bind the cyclical list together
-        new_arena->next = first_arena;
+        tmp->next = new_arena;
     }
     
     return new_arena;
@@ -122,9 +130,14 @@ Arena *arena_alloc(size_t req_size)
 static
 void hdr_ctor(Header *hdr, size_t size)
 {
+    // TODO is this all? I dunno, it should be just constructor, right?
+    hdr->size = size;
+    hdr->asize = 0;     // block is not used yet, so it is 0
+    hdr->next = NULL;
+
     // FIXME
-    (void)hdr;
-    (void)size;
+    //(void)hdr;
+    //(void)size;
 }
 
 /**
@@ -154,9 +167,17 @@ void hdr_ctor(Header *hdr, size_t size)
 static
 Header *hdr_split(Header *hdr, size_t req_size)
 {
+    // check the pre-conditions first
+    if(req_size % PAGE_SIZE == 0)
+        return hdr; // should we return NULL or the right block?
+    if(hdr->size >= (req_size + 2*sizeof(Header)))
+        return hdr;
+
+    
+
     // FIXME
-    (void)hdr;
-    (void)req_size;
+    //(void)hdr;
+    //(void)req_size;
     return NULL;
 }
 
@@ -195,6 +216,13 @@ void hdr_merge(Header *left, Header *right)
  */
 void *mmalloc(size_t size)
 {
+    // we should add the algoritms as follows:
+    if(first_arena == NULL){    // first allocation
+        arena_alloc(PAGE_SIZE);
+    }
+    else{                       // search through the existing arenas and find the best fit
+        ;                       // if not possible to find, allocate new arenas
+    }
     // FIXME
     (void)size;
     return NULL;
