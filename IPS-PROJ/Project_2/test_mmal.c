@@ -71,6 +71,7 @@ int main()
     assert((char*)h2 > (char*)h1);
     assert(h2->next == h1);
     assert(h2->asize == 0);
+    printf("First allocation succesfull\n");
 
     debug_arenas();
 
@@ -91,6 +92,7 @@ int main()
     assert(h3->next == h1);
     assert((char*)h2 < p2);
     assert(p2 < (char*)h3);
+    printf("Second allocation succesfull\n");
 
     debug_arenas();
 
@@ -104,11 +106,13 @@ int main()
      *   +-----+------+----+------+----+------+-----+------+---+
      */
     // insert assert here
+    printf("Third allocation succesfull\n");
     debug_arenas();
 
     /***********************************************************************/
     // Uvolneni prvniho bloku
     mfree(p1);
+    printf("Freeing of first pointer succesfull\n");
 
     /**
      *                p1          p2          p3
@@ -122,6 +126,7 @@ int main()
     /***********************************************************************/
     // Uvolneni posledniho zabraneho bloku
     mfree(p3);
+    printf("Freeing of third pointer succesfull\n");
     /**
      *                p1          p2          p3
      *   +-----+------+----+------+----+------+----------------+
@@ -134,6 +139,7 @@ int main()
     /***********************************************************************/
     // Uvolneni prostredniho bloku
     mfree(p2);
+    printf("Freeing of second pointer succesfull\n");
     /**
      *                p1          p2          p3
      *   +-----+------+----------------------------------------+
@@ -145,6 +151,7 @@ int main()
 
     // Dalsi alokace se nevleze do existujici areny
     void *p4 = mmalloc(PAGE_SIZE*2);
+    printf("Allocation of big pointer succesfull\n");
     /**
      *   /-- first_arena
      *   v            p1          p2          p3
@@ -160,6 +167,7 @@ int main()
 
     /***********************************************************************/
     p4 = mrealloc(p4, PAGE_SIZE*2 + 2);
+    printf("Reallocation of big pointer succesfull\n");
     /**
      *                    p4
      *       +-----+------+-----------------------------+------+---+
@@ -171,6 +179,7 @@ int main()
 
     /***********************************************************************/
     mfree(p4);
+    printf("Freed the big pointer\n");
 
     return 0;
 }

@@ -10,6 +10,14 @@
 #include <assert.h>
 #include <stdio.h>
 
+/**
+ * TODO:
+ * allocation of new arena if necessary
+ * 
+ * 
+ * 
+ */
+
 #ifdef NDEBUG
 /**
  * The structure header encapsulates data of a single memory block.
@@ -223,7 +231,7 @@ void *mmalloc(size_t size)
     Header* tmp;
     Header* result;
     Arena* found_arena;
-    bool allocate_arena = false;
+    bool found = false;
     //my_header = first_arena;
 
 
@@ -248,29 +256,19 @@ void *mmalloc(size_t size)
     }
     else{                       // search through the existing arenas and find the best fit
         ;                       // if not possible to find, allocate new arenas
-        
+        // TODO allocate new area
         tmp = &first_arena[1];  // this is the first header
         my_header = &first_arena[1];
 
-        while(my_header->next != tmp){                          // search for enough space
-            result = hdr_split(my_header, size);
+        while(tmp->next != &first_arena[1] || !found){   // go through it until you come back
+            result = hdr_split(tmp, size);
             if(result != NULL){
-                allocate_arena = false;
-                break;
+                found = true;
             }
-            else if(my_header->next == tmp){
-                allocate_arena = true;
-                break;
-            }
-            my_header = my_header->next;                        // search through the headers
+            tmp = tmp->next;
         }
 
-        if(!allocate_arena){    // current arena is enough
-            return(&result[1] - size);                          // this is space for the user
-        }
-        else{   // we have to allocate new arena
-            // TODO
-        }
+        return(&result[1] - size); // return everything from the previous header up to the current free header
 
     }
 
