@@ -8,6 +8,7 @@
 #include <sys/mman.h> // mmap
 #include <stdbool.h> // bool
 #include <assert.h>
+#include <stdio.h>
 
 #ifdef NDEBUG
 /**
@@ -59,10 +60,12 @@ Arena *first_arena = NULL;
 static
 size_t allign_page(size_t size)
 {   
-    assert(size > 0); // it must be bigger than 0
+    if(size <= 0)
+        return 0;
+    // it must be bigger than 0
     // PAGE_SIZE is 128*1024 = 131 072 and we should align it by it
     // Formula is: (size + align_size - 1)/align_size * align_size 
-    return ((size+131071)/131072*131072);
+    return ((size+131072-1)/131072*131072);
 }
 
 /**
@@ -100,18 +103,6 @@ Arena *arena_alloc(size_t req_size)
 
     new_arena->next = NULL;
     new_arena->size = aligned_size;
-
-
-    if(first_arena == NULL){        // first added arena
-        first_arena = new_arena;    // first arena is assigned
-    }
-    else{                           // all the other arenas
-        tmp = first_arena;
-        while(tmp->next != NULL){    // find the last element
-            tmp = tmp->next;
-        }
-        tmp->next = new_arena;
-    }
     
     return new_arena;
 }
@@ -131,11 +122,8 @@ Arena *arena_alloc(size_t req_size)
 static
 void hdr_ctor(Header *hdr, size_t size)
 {
-    Header h;
-    hdr = &h;
-    // TODO is this all? I dunno, it should be just constructor, right?
+    hdr->asize = 0;
     hdr->size = size;
-    hdr->asize = 0;     // block is not used yet, so it is 0
 
     // FIXME
     //(void)hdr;
@@ -169,28 +157,26 @@ void hdr_ctor(Header *hdr, size_t size)
 static
 Header *hdr_split(Header *hdr, size_t req_size)
 {   
-    printf("Size of header is %d\n", sizeof(Header));
     // check the pre-conditions first
-    if(req_size % PAGE_SIZE == 0){
+    if((req_size % PAGE_SIZE == 0)){
         return NULL; // should we return NULL or the right block?
     }
-    if(hdr->size >= (req_size + 2*sizeof(Header))){
+    else if(!(hdr->size >= (req_size + 2*sizeof(Header)))){
         return NULL;
     }
-
-    printf("prejdem podmienkou\n");
-    hdr->asize = req_size;  // this is our malloced area
-    hdr->size = hdr->size - sizeof(Header) - req_size;
-
+    int new_size = hdr->size - req_size - sizeof(Header);
+ 
+    hdr->asize = req_size; // this is our malloced area
+    hdr->size = 0;  // we put next header right next to it, so it is 0
     Header *new_header;
-    hdr_ctor(new_header, hdr->size);
+    // we use pointer arithmetic to put it into the mapped area
+    new_header = &hdr[1] + sizeof(Header) + req_size;
+    hdr_ctor(new_header, new_size);
+    
 
     // it is cyclical list
     new_header->next = hdr->next;
     hdr->next = new_header;
-
-    // put it into the mapped area by pointer arithmetic
-    new_header = hdr + sizeof(Header) + req_size;
 
     return new_header;
 }
@@ -204,10 +190,12 @@ Header *hdr_split(Header *hdr, size_t req_size)
 static
 bool hdr_can_merge(Header *left, Header *right)
 {
-    // FIXME
-    (void)left;
-    (void)right;
-    return false;
+    if((left + sizeof(Header) + left->size) == right){
+        return true;
+    }
+    else{
+        return false;
+    }
 }
 
 /**
@@ -218,8 +206,9 @@ bool hdr_can_merge(Header *left, Header *right)
 static
 void hdr_merge(Header *left, Header *right)
 {
-    (void)left;
-    (void)right;
+    if(hdr_can_merge(left, right)){
+        // merge
+    }
     // FIXME
 }
 
@@ -232,36 +221,63 @@ void *mmalloc(size_t size)
 {
     Header* my_header;
     Header* tmp;
+    Header* result;
     Arena* found_arena;
+    bool allocate_arena = false;
     //my_header = first_arena;
 
 
     // we should add the algoritms as follows:
     if(first_arena == NULL){    // first allocation
-        found_arena = arena_alloc(PAGE_SIZE);               // allocating the first arena
-        hdr_ctor(&my_header, PAGE_SIZE - sizeof(Header));    // we are creating the first header
-        my_header->next = my_header;                        // it is cyclical list
-        my_header = found_arena;                            // header is at the beginning of arena
+        found_arena = arena_alloc(size);               // allocating the first arena
+        first_arena = found_arena;
+        first_arena->next = NULL;
+        if(first_arena == NULL){                            // check allocation success
+            return NULL;
+        }
+        else{
+            
+            my_header = &found_arena[1];                        // we put the header inside the mapped area
+            hdr_ctor(my_header, PAGE_SIZE - sizeof(Header));    // we are creating the first header
+            my_header->next = my_header;                        // it is cyclical list
 
-        tmp = hdr_split(my_header, size);
-        tmp = tmp->next;
-        return(tmp + sizeof(Header));
+            tmp = hdr_split(my_header, size);
+            if(tmp != NULL)
+                return(&my_header[1] + sizeof(Header));             // should it be from 0 or 1? TODO CHECK PLS
+        }
     }
     else{                       // search through the existing arenas and find the best fit
         ;                       // if not possible to find, allocate new arenas
-        // try to do hdr_split, if it doesn't work, allocate new arena
-        if(my_header->next == my_header){   // there is only one header
+        
+        tmp = &first_arena[1];  // this is the first header
+        my_header = &first_arena[1];
 
+        while(my_header->next != tmp){                          // search for enough space
+            result = hdr_split(my_header, size);
+            if(result != NULL){
+                allocate_arena = false;
+                break;
+            }
+            else if(my_header->next == tmp){
+                allocate_arena = true;
+                break;
+            }
+            my_header = my_header->next;                        // search through the headers
         }
-        else{                               // while search for header
 
+        if(!allocate_arena){    // current arena is enough
+            return(&result[1] - size);                          // this is space for the user
         }
+        else{   // we have to allocate new arena
+            // TODO
+        }
+
     }
 
     
-    my_header = found_arena;
+    //my_header = found_arena;
 
-    my_header->next = my_header;
+    //my_header->next = my_header;
 
     // FIXME
     (void)size;
@@ -274,6 +290,7 @@ void *mmalloc(size_t size)
  */
 void mfree(void *ptr)
 {
+    //Header* next = ptr
     (void)ptr;
     // FIXME
 }
