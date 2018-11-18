@@ -288,9 +288,28 @@ void *mmalloc(size_t size)
  */
 void mfree(void *ptr)
 {
-    //Header* next = ptr
-    (void)ptr;
-    // FIXME
+    Header* my_header; 
+    Header* previous;
+    Header* next;
+
+    my_header = &ptr[0] - sizeof(Header);   // find header of my current pointer
+
+    next = my_header->next;                 // next one is easy to find
+
+    previous = my_header;                   // previous has to be found by cycling through the list
+    while(previous->next != my_header){
+        previous = previous->next;
+    }
+
+    // TODO: MERGE and FREE
+    
+    // first, try to merge current and next
+    hdr_merge(my_header, next);
+
+    // then, try to merge previous and current
+    hdr_merge(previous, my_header);
+
+    printf("Freeing\n");
 }
 
 /**
