@@ -7,7 +7,7 @@ Sabína Gregušová<br>
 Tomáš Sasák
 
 
-Project 1: ?/?<br>
+Project 1: 10/10<br>
 Project 2: ?/?
 
 ## Parallel SED

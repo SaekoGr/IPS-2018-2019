@@ -1,3 +1,4 @@
+// Riešitelia: Tomáš Sasák - xsasak01, Sabína Gregušová - xgregu02
 /**
  * Parallel calculation of SED *
  * Made for subject Programming Seminar

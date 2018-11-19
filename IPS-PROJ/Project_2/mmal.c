@@ -94,8 +94,6 @@ Arena *arena_alloc(size_t req_size)
 {
     // variable for arena and aligned size
     Arena* new_arena = NULL;
-    Arena my_arena;
-    new_arena = &my_arena;
     Arena* tmp = NULL;
     size_t aligned_size = allign_page(req_size);
     int fd = -1; // TODO - what should this number be?
@@ -105,7 +103,7 @@ Arena *arena_alloc(size_t req_size)
      * mmap (addr, size, prot, flags|MAP_ANONYMOUS|MAP_PRIVATE, -1, 0)
      * so I leave it like this for now
      */
-    new_arena = mmap(0, aligned_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, fd, 0); // TODO - check tha parameters
+    new_arena = (Arena *)mmap(0, aligned_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, fd, 0); // TODO - check tha parameters
     if(new_arena == MAP_FAILED)           // failed mmap
         return NULL;
 
@@ -178,7 +176,7 @@ Header *hdr_split(Header *hdr, size_t req_size)
     hdr->size = 0;  // we put next header right next to it, so it is 0
     Header *new_header;
     // we use pointer arithmetic to put it into the mapped area
-    new_header = &hdr[1] + sizeof(Header) + req_size;
+    new_header = &hdr[1] + req_size; // hdr[1] points out of header on the users place and + req_size will skip the users space and there should be next new head
     hdr_ctor(new_header, new_size);
     
 
@@ -245,13 +243,13 @@ void *mmalloc(size_t size)
         }
         else{
             
-            my_header = &found_arena[1];                        // we put the header inside the mapped area
+            my_header = (Header *)&found_arena[1];                        // We put header inside first free place of the allocated place, but at first must skip the arena header
             hdr_ctor(my_header, PAGE_SIZE - sizeof(Header));    // we are creating the first header
             my_header->next = my_header;                        // it is cyclical list
 
             tmp = hdr_split(my_header, size);
             if(tmp != NULL)
-                return(&my_header[1] + sizeof(Header));             // should it be from 0 or 1? TODO CHECK PLS
+                return(&my_header[1]);             // Must be only one, need to skip the header, and give user just his space (42)
         }
     }
     else{                       // search through the existing arenas and find the best fit
@@ -292,7 +290,7 @@ void mfree(void *ptr)
     Header* previous;
     Header* next;
 
-    my_header = &ptr[0] - sizeof(Header);   // find header of my current pointer
+    my_header = ptr - sizeof(Header);   // find header of my current pointer
 
     next = my_header->next;                 // next one is easy to find
 
