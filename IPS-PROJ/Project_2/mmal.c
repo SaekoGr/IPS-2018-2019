@@ -174,9 +174,12 @@ Header *hdr_split(Header *hdr, size_t req_size)
  
     hdr->asize = req_size; // this is our malloced area
     hdr->size = 0;  // we put next header right next to it, so it is 0
+    char *temp_header;
     Header *new_header;
     // we use pointer arithmetic to put it into the mapped area
-    new_header = &hdr[1] + req_size; // hdr[1] points out of header on the users place and + req_size will skip the users space and there should be next new head
+    // Need to retype it to char so we can 
+    temp_header = (char*)&hdr[1] + req_size; // hdr[1] points out of header on the users place and + req_size will skip the users space and there should be next new head
+    new_header = (Header *) temp_header;
     hdr_ctor(new_header, new_size);
     
 
@@ -196,7 +199,8 @@ Header *hdr_split(Header *hdr, size_t req_size)
 static
 bool hdr_can_merge(Header *left, Header *right)
 {
-    if((left + sizeof(Header) + left->size) == right){
+    // This is right, but next must check if the right has nothing alocated because, we cannot move users allocated stuff because his pointer woudnt point good
+    if((left + sizeof(Header) + left->size) == right && (right->asize == 0)){
         return true;
     }
     else{
@@ -213,7 +217,9 @@ static
 void hdr_merge(Header *left, Header *right)
 {
     if(hdr_can_merge(left, right)){
-        // merge
+        left->size = right->size + sizeof(Header);
+        left->next = right->next;
+        /* right->size = 0; */
     }
     // FIXME
 }
@@ -265,8 +271,9 @@ void *mmalloc(size_t size)
             }
             tmp = tmp->next;
         }
-
-        return(&result[1] - size); // return everything from the previous header up to the current free header
+        char *temp_pointer = (char *)result;
+        temp_pointer = temp_pointer - size;
+        return temp_pointer; // return everything from the previous header up to the current free header
 
     }
 
@@ -303,9 +310,23 @@ void mfree(void *ptr)
     
     // first, try to merge current and next
     hdr_merge(my_header, next);
+/*     if(my_header->size == 0)
+    {
+        return;
+    } */
 
     // then, try to merge previous and current
     hdr_merge(previous, my_header);
+   /*  if(my_header->size == 0)
+    {
+        return;
+    }
+
+    my_header->asize = my_header->size;
+    my_header->size = 0;
+
+    // Jakože fakt neviem ako tu zistit ci sa to freenulo alebo nie
+    // asi som fakt 5IQ */
 
     printf("Freeing\n");
 }

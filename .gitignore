@@ -21,3 +21,6 @@ Project_1/tmp_soubor
 .vscode/launch.json
 .vscode/launch.json
 .vscode/settings.json
+IPS-PROJ/Project_2/mmal.o
+IPS-PROJ/Project_2/test_mmal
+.gitignore
