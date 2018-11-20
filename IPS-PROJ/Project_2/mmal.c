@@ -1,4 +1,4 @@
-
+// 
 /**
  * Implementace My MALloc
  * Demonstracni priklad pro 1. ukol IPS/2018
@@ -80,8 +80,9 @@ size_t allign_page(size_t size)
     assert(size > 0);
     // it must be bigger than 0
     // PAGE_SIZE is 128*1024 = 131 072 and we should align it by it
-    // Formula is: (size + align_size - 1)/align_size * align_size 
-    return ((size+131072-1)/131072*131072);
+    // Formula is: (size + align_size - 1)/align_size * align_size
+    size_t current_size = PAGE_SIZE; 
+    return ((size+current_size-1)/current_size*current_size);
 }
 
 /**
@@ -412,7 +413,6 @@ void *mmalloc(size_t size)
 
             /*
             my_header = first_fit(size);                        // We put header inside first free place of the allocated place, but at first must skip the arena header
-
             tmp_header = hdr_split(my_header, size);
             if(tmp_header != NULL)
                 return(&my_header[1]); 

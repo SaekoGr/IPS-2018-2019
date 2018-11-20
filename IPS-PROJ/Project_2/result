@@ -1,2 +1,151 @@
 ./test_mmal
-Makefile:5: recipe for target 'test' failed
+test_mmal.c:80: po mmalloc(32) = mmalloc(0x20)
+==========================================================
+Arena 1 @ 0x7f62f2752000, size: 131072
+|
++- Header 1 @ 0x7f62f2752010, data @ 0x7f62f2752028
+|    | next           | size     | asize    |
+|    | 0x7f62f2752048 | 0        | 32       |
++- Header 2 @ 0x7f62f2752048, data @ 0x7f62f2752060
+|    | next           | size     | asize    |
+|    | 0x7f62f2752010 | 130992   | 0        |
+|
+NULL
+test_mmal.c:100: po 2. mmalloc(256) = mmalloc(0x100)
+==========================================================
+Arena 1 @ 0x7f62f2752000, size: 131072
+|
++- Header 1 @ 0x7f62f2752010, data @ 0x7f62f2752028
+|    | next           | size     | asize    |
+|    | 0x7f62f2752048 | 0        | 32       |
++- Header 2 @ 0x7f62f2752048, data @ 0x7f62f2752060
+|    | next           | size     | asize    |
+|    | 0x7f62f2752160 | 0        | 256      |
++- Header 3 @ 0x7f62f2752160, data @ 0x7f62f2752178
+|    | next           | size     | asize    |
+|    | 0x7f62f2752010 | 130712   | 0        |
+|
+NULL
+test_mmal.c:112: po 3. mmalloc(16) = mmalloc(0x10)
+==========================================================
+Arena 1 @ 0x7f62f2752000, size: 131072
+|
++- Header 1 @ 0x7f62f2752010, data @ 0x7f62f2752028
+|    | next           | size     | asize    |
+|    | 0x7f62f2752048 | 0        | 32       |
++- Header 2 @ 0x7f62f2752048, data @ 0x7f62f2752060
+|    | next           | size     | asize    |
+|    | 0x7f62f2752160 | 0        | 256      |
++- Header 3 @ 0x7f62f2752160, data @ 0x7f62f2752178
+|    | next           | size     | asize    |
+|    | 0x7f62f2752188 | 0        | 16       |
++- Header 4 @ 0x7f62f2752188, data @ 0x7f62f27521a0
+|    | next           | size     | asize    |
+|    | 0x7f62f2752010 | 130672   | 0        |
+|
+NULL
+test_mmal.c:125: po mfree(p1)
+==========================================================
+Arena 1 @ 0x7f62f2752000, size: 131072
+|
++- Header 1 @ 0x7f62f2752010, data @ 0x7f62f2752028
+|    | next           | size     | asize    |
+|    | 0x7f62f2752048 | 32       | 0        |
++- Header 2 @ 0x7f62f2752048, data @ 0x7f62f2752060
+|    | next           | size     | asize    |
+|    | 0x7f62f2752160 | 0        | 256      |
++- Header 3 @ 0x7f62f2752160, data @ 0x7f62f2752178
+|    | next           | size     | asize    |
+|    | 0x7f62f2752188 | 0        | 16       |
++- Header 4 @ 0x7f62f2752188, data @ 0x7f62f27521a0
+|    | next           | size     | asize    |
+|    | 0x7f62f2752010 | 130672   | 0        |
+|
+NULL
+test_mmal.c:137: po mfree(p3)
+==========================================================
+Arena 1 @ 0x7f62f2752000, size: 131072
+|
++- Header 1 @ 0x7f62f2752010, data @ 0x7f62f2752028
+|    | next           | size     | asize    |
+|    | 0x7f62f2752048 | 32       | 0        |
++- Header 2 @ 0x7f62f2752048, data @ 0x7f62f2752060
+|    | next           | size     | asize    |
+|    | 0x7f62f2752160 | 0        | 256      |
++- Header 3 @ 0x7f62f2752160, data @ 0x7f62f2752178
+|    | next           | size     | asize    |
+|    | 0x7f62f2752010 | 130712   | 0        |
+|
+NULL
+test_mmal.c:149: po mfree(p2)
+==========================================================
+Arena 1 @ 0x7f62f2752000, size: 131072
+|
++- Header 1 @ 0x7f62f2752010, data @ 0x7f62f2752028
+|    | next           | size     | asize    |
+|    | 0x7f62f2752010 | 131048   | 0        |
+|
+NULL
+test_mmal.c:170: po mmalloc(262144) = mmalloc(0x40000)
+==========================================================
+Arena 1 @ 0x7f62f2752000, size: 131072
+|
++- Header 1 @ 0x7f62f2752010, data @ 0x7f62f2752028
+|    | next           | size     | asize    |
+|    | 0x7f62f26e5010 | 131048   | 0        |
+|
+Arena 2 @ 0x7f62f26e5000, size: 393216
+|
++- Header 1 @ 0x7f62f26e5010, data @ 0x7f62f26e5028
+|    | next           | size     | asize    |
+|    | 0x7f62f2725028 | 0        | 262144   |
++- Header 2 @ 0x7f62f2725028, data @ 0x7f62f2725040
+|    | next           | size     | asize    |
+|    | 0x7f62f2752010 | 131024   | 0        |
+|
+NULL
+test_mmal.c:185: po mrealloc(p4, 262146) = mmrealloc(p4, 0x400002)
+==========================================================
+Arena 1 @ 0x7f62f2752000, size: 131072
+|
++- Header 1 @ 0x7f62f2752010, data @ 0x7f62f2752028
+|    | next           | size     | asize    |
+|    | 0x7f62f26e5010 | 131048   | 0        |
+|
+Arena 2 @ 0x7f62f26e5000, size: 393216
+|
++- Header 1 @ 0x7f62f26e5010, data @ 0x7f62f26e5028
+|    | next           | size     | asize    |
+|    | 0x7f62f2685010 | 393192   | 0        |
+|
+Arena 3 @ 0x7f62f2685000, size: 393216
+|
++- Header 1 @ 0x7f62f2685010, data @ 0x7f62f2685028
+|    | next           | size     | asize    |
+|    | 0x7f62f26c502a | 0        | 262146   |
++- Header 2 @ 0x7f62f26c502a, data @ 0x7f62f26c5042
+|    | next           | size     | asize    |
+|    | 0x7f62f2752010 | 131022   | 0        |
+|
+NULL
+test_mmal.c:192: po mfree(p4)
+==========================================================
+Arena 1 @ 0x7f62f2752000, size: 131072
+|
++- Header 1 @ 0x7f62f2752010, data @ 0x7f62f2752028
+|    | next           | size     | asize    |
+|    | 0x7f62f26e5010 | 131048   | 0        |
+|
+Arena 2 @ 0x7f62f26e5000, size: 393216
+|
++- Header 1 @ 0x7f62f26e5010, data @ 0x7f62f26e5028
+|    | next           | size     | asize    |
+|    | 0x7f62f2685010 | 393192   | 0        |
+|
+Arena 3 @ 0x7f62f2685000, size: 393216
+|
++- Header 1 @ 0x7f62f2685010, data @ 0x7f62f2685028
+|    | next           | size     | asize    |
+|    | 0x7f62f2752010 | 393192   | 0        |
+|
+NULL

@@ -168,7 +168,7 @@ int main()
     assert(h4->next->next == h1);
 
     debug_arenas(HERE "po mmalloc(262144) = mmalloc(0x40000)");
-
+    
     /***********************************************************************/
     p4 = mrealloc(p4, PAGE_SIZE*2 + 2);
     /**
