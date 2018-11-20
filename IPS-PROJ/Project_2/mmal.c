@@ -1,4 +1,4 @@
-// 
+// xsasak01
 /**
  * Implementace My MALloc
  * Demonstracni priklad pro 1. ukol IPS/2018
@@ -474,8 +474,11 @@ void *mrealloc(void *ptr, size_t size)
     // Get header
     char *temp_pointer = (char *)ptr - sizeof(Header);
     Header *user_place = (Header *)temp_pointer;
-    // User wants smaller size, just make new header with free place 
-    if(user_place->asize > size)
+    // User wants to reallocate it to size 0, so we free it
+    if(size == 0){
+        mfree(ptr);
+    } // User wants smaller size, just make new header with free place
+    else if(user_place->asize > size)
     {
         user_place->size = (user_place->asize - size);
         user_place->asize = size;
