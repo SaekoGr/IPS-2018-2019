@@ -1,3 +1,4 @@
+
 /**
  * Implementace My MALloc
  * Demonstracni priklad pro 1. ukol IPS/2018
@@ -290,8 +291,8 @@ Header *first_fit(size_t size)
 {
     assert(size > 0);
     bool found = false;
-    Header* first_header = (char *)&first_arena[1];
-    Header* tmp_header = (char *)&first_arena[1];
+    Header* first_header = (Header *)&first_arena[1];
+    Header* tmp_header = (Header *)&first_arena[1];
     while(tmp_header->next != first_header || !found){
         if(tmp_header->asize == 0){
             if(hdr_should_split(tmp_header, size)){
@@ -470,8 +471,49 @@ void mfree(void *ptr)
  */
 void *mrealloc(void *ptr, size_t size)
 {
-    // FIXME
-    (void)ptr;
-    (void)size;
-    return NULL;
+    // Get header
+    char *temp_pointer = (char *)ptr - sizeof(Header);
+    Header *user_place = (Header *)temp_pointer;
+    // User wants smaller size, just make new header with free place 
+    if(user_place->asize > size)
+    {
+        user_place->size = (user_place->asize - size);
+        user_place->asize = size;
+        // Return user pointer to his new space (actually, its the same place lol)
+        return ptr;
+    }
+    // user wants bigger space
+    else if(user_place->asize < size)
+    {
+        // Firstly check if the user can get more in the same block
+        if((user_place->size + user_place->asize) >= size)
+        {
+            user_place->size = (user_place->size + user_place->asize) - size; // size of whole block - requested size stays free
+            user_place->asize = size; // allocated size is new size
+            // If fitted, return same pointer
+            return ptr;
+        }
+        // User cannot get more space in the same block, need to find new for him and copy his data there
+        else
+        {
+            // Free the pointer and find new place
+            char *new_user_place = mmalloc(size);
+            char *old_place = (char *)ptr;
+            for(size_t i = 0; i < user_place->asize; i++)
+            {
+                new_user_place[i] = old_place[i];
+            }
+            mfree(ptr);
+            return new_user_place;
+        }
+    }
+    else if(size == 0)
+    {
+        return NULL;
+    }
+    // User wants same size, return same pointer
+    else 
+    {
+        return ptr;
+    }
 }
