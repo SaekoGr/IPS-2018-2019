@@ -1,7 +1,13 @@
+#undef NDEBUG
+
 #include <stdio.h>
 #include <assert.h>
 #include "mmal.h"
 #include <unistd.h>
+
+#define MSTR(x) #x
+#define M2STR(x) MSTR(x)
+#define HERE __FILE__ ":" M2STR(__LINE__) ": "
 
 void debug_hdr(Header *h, int idx)
 {
@@ -12,7 +18,7 @@ void debug_hdr(Header *h, int idx)
 
 void debug_arena(Arena *a, int idx)
 {
-    printf("Arena %d @ %p\n", idx, a);
+    printf("Arena %d @ %p, size: %lu\n", idx, a, a->size);
     printf("|\n");
     char *arena_stop = (char*)a + a->size;
     Header *h = (Header*)&a[1];
@@ -28,32 +34,29 @@ void debug_arena(Arena *a, int idx)
     }
 }
 
-#ifdef NDEBUG
-void debug_arenas()
+void debug_arenas(const char *msg)
 {
-    printf("==========================================\n");
+    printf("%s\n", msg);
+    printf("==========================================================\n");
     Arena *a = first_arena;
     for (int i = 1; a; i++)
     {
         debug_arena(a, i);
+        a = a->next;
+        printf("|\n");
     }
     printf("NULL\n");
 }
-#else
-#define debug_arenas()
-#endif
 
 int main()
 {
-    Header h = {(void*)&main, 1234124, 131072};
-    debug_hdr(&h, 1);
     assert(first_arena == NULL);
 
     /***********************************************************************/
     // Prvni alokace
     // Mela by alokovat novou arenu, pripravit hlavicku v ni a prave jeden
     // blok.
-    void *p1 = mmalloc(42);
+    void *p1 = mmalloc(32);
     /**
      *   v----- first_arena
      *   +-----+------+----+------+----------------------------+
@@ -61,21 +64,24 @@ int main()
      *   +-----+------+----+------+----------------------------+
      *       p1-------^
      */
+    if (p1 == NULL)
+        perror("mmalloc");
     assert(first_arena != NULL);
     assert(first_arena->next == NULL);
     assert(first_arena->size > 0);
     assert(first_arena->size <= PAGE_SIZE);
     Header *h1 = (Header*)(&first_arena[1]);
     Header *h2 = h1->next;
-    assert(h1->asize == 42);
+    assert(h1->asize == 32);
     assert((char*)h2 > (char*)h1);
     assert(h2->next == h1);
     assert(h2->asize == 0);
-    printf("First allocation succesfull\n");
+
+    debug_arenas(HERE "po mmalloc(32) = mmalloc(0x20)");
 
     /***********************************************************************/
     // Druha alokace
-    char *p2 = mmalloc(42);
+    char *p2 = mmalloc(256);
     /**
      *   v----- first_arena
      *   +-----+------+----+------+----+------+----------------+
@@ -90,9 +96,8 @@ int main()
     assert(h3->next == h1);
     assert((char*)h2 < p2);
     assert(p2 < (char*)h3);
-    printf("Second allocation succesfull\n");
 
-    debug_arenas();
+    debug_arenas(HERE "po 2. mmalloc(256) = mmalloc(0x100)");
 
     /***********************************************************************/
     // Treti alokace
@@ -104,13 +109,11 @@ int main()
      *   +-----+------+----+------+----+------+-----+------+---+
      */
     // insert assert here
-    printf("Third allocation succesfull\n");
-    debug_arenas();
+    debug_arenas(HERE "po 3. mmalloc(16) = mmalloc(0x10)");
 
     /***********************************************************************/
     // Uvolneni prvniho bloku
     mfree(p1);
-    printf("Freeing of first pointer succesfull\n");
 
     /**
      *                p1          p2          p3
@@ -119,12 +122,11 @@ int main()
      *   +-----+------+----+------+----+------+-----+------+---+
      */
     // insert assert here
-    debug_arenas();
+    debug_arenas(HERE "po mfree(p1)");
 
     /***********************************************************************/
     // Uvolneni posledniho zabraneho bloku
     mfree(p3);
-    printf("Freeing of third pointer succesfull\n");
     /**
      *                p1          p2          p3
      *   +-----+------+----+------+----+------+----------------+
@@ -132,12 +134,11 @@ int main()
      *   +-----+------+----+------+----+------+----------------+
      */
     // insert assert here
-    debug_arenas();
+    debug_arenas(HERE "po mfree(p3)");
 
     /***********************************************************************/
     // Uvolneni prostredniho bloku
     mfree(p2);
-    printf("Freeing of second pointer succesfull\n");
     /**
      *                p1          p2          p3
      *   +-----+------+----------------------------------------+
@@ -145,11 +146,10 @@ int main()
      *   +-----+------+----------------------------------------+
      */
     // insert assert here
-    debug_arenas();
+    debug_arenas(HERE "po mfree(p2)");
 
     // Dalsi alokace se nevleze do existujici areny
     void *p4 = mmalloc(PAGE_SIZE*2);
-    printf("Allocation of big pointer succesfull\n");
     /**
      *   /-- first_arena
      *   v            p1          p2          p3
@@ -162,22 +162,34 @@ int main()
      *       |Arena|Header|XXXXXXXXXXXXXXXXXXXXXXXXXXX|Header|.....|
      *       +-----+------+---------------------------+------+-----+
      */
+    Header *h4 = &((Header*)p4)[-1];
+    assert(h1->next == h4);
+    assert(h4->asize == PAGE_SIZE*2);
+    assert(h4->next->next == h1);
+
+    debug_arenas(HERE "po mmalloc(262144) = mmalloc(0x40000)");
 
     /***********************************************************************/
     p4 = mrealloc(p4, PAGE_SIZE*2 + 2);
-    printf("Reallocation of big pointer succesfull\n");
     /**
      *                    p4
      *       +-----+------+-----------------------------+------+---+
      *       |Arena|Header|XXXXXXXXXXXXXXXXXXXXXXXXXXXxx|Header|...|
      *       +-----+------+-----------------------------+------+---+
      */
-    // insert assert here
-    debug_arenas();
+
+    assert(p4 != NULL);
+    // h4 need not to be in the same location; would be nice, but not required
+    h4 = &((Header*)p4)[-1];
+    assert(h4->asize == PAGE_SIZE*2 + 2);
+    debug_arenas(HERE "po mrealloc(p4, 262146) = mmrealloc(p4, 0x400002)");
 
     /***********************************************************************/
     mfree(p4);
-    printf("Freed the big pointer\n");
+    assert(h4->asize == 0);
+    assert(h4->next == h1);
+
+    debug_arenas(HERE "po mfree(p4)");
 
     return 0;
 }

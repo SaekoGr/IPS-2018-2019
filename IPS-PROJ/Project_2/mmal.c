@@ -64,6 +64,10 @@ struct arena {
 
 #endif // NDEBUG
 
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS 0x20
+#endif
+
 Arena *first_arena = NULL;
 
 /**
@@ -125,7 +129,12 @@ Arena *arena_alloc(size_t req_size)
 static
 void arena_append(Arena *a)
 {
-    (void)a;
+    Arena* arena_tmp;
+    arena_tmp = first_arena;
+    while(arena_tmp->next != NULL){
+    arena_tmp = arena_tmp->next;
+    }
+    arena_tmp->next = a;
 }
 
 /**
@@ -162,10 +171,13 @@ bool hdr_should_split(Header *hdr, size_t size)
 {
     assert(hdr->asize == 0);
     assert(size > 0);
-    // FIXME
-    (void)hdr;
-    (void)size;
-    return false;
+    
+    if((hdr->size >= size + 2*sizeof(Header))){
+        return true;
+    }
+    else{
+        return false;
+    }
 }
 
 /**
@@ -277,9 +289,28 @@ static
 Header *first_fit(size_t size)
 {
     assert(size > 0);
-    // FIXME
-    (void)size;
-    return NULL;
+    bool found = false;
+    Header* first_header = (char *)&first_arena[1];
+    Header* tmp_header = (char *)&first_arena[1];
+    while(tmp_header->next != first_header || !found){
+        if(tmp_header->asize == 0){
+            if(hdr_should_split(tmp_header, size)){
+                found = true;
+                break;
+            }
+        }
+        else if(tmp_header->next == first_header){
+            break;
+        }
+        tmp_header = tmp_header->next;
+    }
+    if(found){
+        return tmp_header;
+    }
+    else{
+        return NULL;
+    }
+
 }
 
 /**
@@ -293,8 +324,11 @@ static
 Header *hdr_get_prev(Header *hdr)
 {
     assert(first_arena != NULL);
-    (void)hdr;
-    return NULL;
+    Header* tmp = hdr;
+    while(tmp->next != hdr){
+        tmp = tmp->next;
+    }
+    return tmp;
 }
 
 /**
@@ -311,8 +345,8 @@ void *mmalloc(size_t size)
     Header* new_header;
     Arena* found_arena;
     Arena* last_arena;
-    Arena* arena_tmp;
-    bool found = false;
+    //Arena* arena_tmp;
+    //bool found = false;
     int size_of_arena;
     //my_header = first_arena;
 
@@ -327,31 +361,23 @@ void *mmalloc(size_t size)
         }
         else{
             size_of_arena = allign_page(size + sizeof(Header));
-            my_header = (char *)&found_arena[1];                        // We put header inside first free place of the allocated place, but at first must skip the arena header
+            my_header = (Header*) &first_arena[1];
             hdr_ctor(my_header, size_of_arena - sizeof(Header));    // we are creating the first header
             my_header->next = my_header;                        // it is cyclical list
+
+            my_header = first_fit(size);                        // We put header inside first free place of the allocated place, but at first must skip the arena header
+
 
             tmp_header = hdr_split(my_header, size);
             if(tmp_header != NULL)
                 return(&my_header[1]);             // Must be only one, need to skip the header, and give user just his space (42)
         }
     }
-    else{                       // search through the existing arenas and find the best fit
-        ;                       // if not possible to find, allocate new arenas
-        // TODO allocate new area
-        tmp_header = &first_arena[1];  // this is the first header
-        my_header = &first_arena[1];
-
-        while(tmp_header->next != my_header || !found){   // go through it until you come back
-            result = hdr_split(tmp_header, size);
-            if(result != NULL){
-                found = true;
-            }
-            if(tmp_header->next == my_header){
-                break;
-            }
-            tmp_header = tmp_header->next;
-        }
+    else{
+        // search through the existing arenas and find the best fit                       
+        // if not possible to find, allocate new arenas
+        my_header = first_fit(size);
+        result = hdr_split(my_header, size);
 
         if(result != NULL){
             char *temp_pointer = (char *)result;
@@ -359,15 +385,10 @@ void *mmalloc(size_t size)
             return temp_pointer; // return everything from the previous header up to the current free header
         }
         else{
-            printf("Prisiel som namapovat arenu\n");
             // it doesn't fit in the first arena
             last_arena = arena_alloc(size + sizeof(Header));
-
-            arena_tmp = first_arena;
-            while(arena_tmp->next != NULL){
-                arena_tmp = arena_tmp->next;
-            }
-            arena_tmp->next = last_arena;
+            // append arena
+            arena_append(last_arena);
 
             last_header = (Header *)&first_arena[1];
             my_header = (Header *)&first_arena[1];
@@ -380,7 +401,7 @@ void *mmalloc(size_t size)
             hdr_ctor(new_header, size_of_arena - sizeof(Header));
 
             new_header = last_header->next;
-            last_header->next = size_of_arena;
+            last_header->next = new_header;
 
             tmp_header = hdr_split(new_header, size);
             if(tmp_header != NULL)
@@ -413,22 +434,22 @@ void mfree(void *ptr)
     // next header
     next = my_header->next;                 // next one is easy to find
     // 
-    previous = my_header;                   // previous has to be found by cycling through the list
-    while(previous->next != my_header){
-        previous = previous->next;
-    }
+    previous = hdr_get_prev(my_header);     // previous has to be found by cycling through the list
+    
 
     // TODO: MERGE and FREE
     new_size = my_header->asize;
     my_header->asize = 0;
     my_header->size = new_size;
     // first, try to merge current and next
-    hdr_merge(my_header, next);
-
+    if(my_header->next == next && my_header != next){
+        hdr_merge(my_header, next);
+    }
     // then, try to merge previous and current
-    hdr_merge(previous, my_header);
-   
-    printf("Freeing\n");
+    if(previous->next == my_header && previous != my_header){
+        hdr_merge(previous, my_header);
+    }
+
 }
 
 /**
