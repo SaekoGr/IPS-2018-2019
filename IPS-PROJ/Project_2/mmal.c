@@ -299,11 +299,12 @@ Header *first_fit(size_t size)
                 break;
             }
         }
-        else if(tmp_header->next == first_header){
+        if(tmp_header->next == first_header){
             break;
         }
         tmp_header = tmp_header->next;
     }
+
     if(found){
         return tmp_header;
     }
@@ -367,7 +368,6 @@ void *mmalloc(size_t size)
 
             my_header = first_fit(size);                        // We put header inside first free place of the allocated place, but at first must skip the arena header
 
-
             tmp_header = hdr_split(my_header, size);
             if(tmp_header != NULL)
                 return(&my_header[1]);             // Must be only one, need to skip the header, and give user just his space (42)
@@ -377,9 +377,9 @@ void *mmalloc(size_t size)
         // search through the existing arenas and find the best fit                       
         // if not possible to find, allocate new arenas
         my_header = first_fit(size);
-        result = hdr_split(my_header, size);
-
-        if(result != NULL){
+        
+        if(my_header != NULL){
+            result = hdr_split(my_header, size);
             char *temp_pointer = (char *)result;
             temp_pointer = temp_pointer - size;
             return temp_pointer; // return everything from the previous header up to the current free header
@@ -400,13 +400,22 @@ void *mmalloc(size_t size)
             new_header = (Header*) &last_arena[1];
             hdr_ctor(new_header, size_of_arena - sizeof(Header));
 
-            new_header = last_header->next;
+            new_header->next = last_header->next;
             last_header->next = new_header;
 
-            tmp_header = hdr_split(new_header, size);
+            result = first_fit(size);
+
+            tmp_header = hdr_split(result, size);
+            if(tmp_header != NULL)
+                return(&result[1]); 
+
+            /*
+            my_header = first_fit(size);                        // We put header inside first free place of the allocated place, but at first must skip the arena header
+
+            tmp_header = hdr_split(my_header, size);
             if(tmp_header != NULL)
                 return(&my_header[1]); 
-
+            */
         }
     }
 
