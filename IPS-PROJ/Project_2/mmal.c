@@ -94,7 +94,6 @@ Arena *arena_alloc(size_t req_size)
 {
     // variable for arena and aligned size
     Arena* new_arena = NULL;
-    Arena* tmp = NULL;
     size_t aligned_size = allign_page(req_size);
     int fd = -1; // TODO - what should this number be?
 
@@ -199,9 +198,16 @@ Header *hdr_split(Header *hdr, size_t req_size)
 static
 bool hdr_can_merge(Header *left, Header *right)
 {
-    // This is right, but next must check if the right has nothing alocated because, we cannot move users allocated stuff because his pointer woudnt point good
-    if((left + sizeof(Header) + left->size) == right && (right->asize == 0)){
-        return true;
+    char* left_adress = (char *) left + sizeof(Header) + left->size;
+    Header* address = (Header*) left_adress;
+    
+    if(address == right){
+        if(left->asize == 0 && right->asize == 0){
+            return true;
+        }
+        else{
+            return false;
+        }    
     }
     else{
         return false;
@@ -217,11 +223,11 @@ static
 void hdr_merge(Header *left, Header *right)
 {
     if(hdr_can_merge(left, right)){
-        left->size = right->size + sizeof(Header);
+        int my_size = left->size;
+        left->size = my_size + right->size + sizeof(Header);
         left->next = right->next;
-        /* right->size = 0; */
     }
-    // FIXME
+
 }
 
 /**
@@ -249,7 +255,7 @@ void *mmalloc(size_t size)
         }
         else{
             
-            my_header = (Header *)&found_arena[1];                        // We put header inside first free place of the allocated place, but at first must skip the arena header
+            my_header = (char *)&found_arena[1];                        // We put header inside first free place of the allocated place, but at first must skip the arena header
             hdr_ctor(my_header, PAGE_SIZE - sizeof(Header));    // we are creating the first header
             my_header->next = my_header;                        // it is cyclical list
 
@@ -296,38 +302,28 @@ void mfree(void *ptr)
     Header* my_header; 
     Header* previous;
     Header* next;
+    int new_size;
 
+    // current header
     my_header = ptr - sizeof(Header);   // find header of my current pointer
-
+    // next header
     next = my_header->next;                 // next one is easy to find
-
+    // 
     previous = my_header;                   // previous has to be found by cycling through the list
     while(previous->next != my_header){
         previous = previous->next;
     }
 
     // TODO: MERGE and FREE
-    
+    new_size = my_header->asize;
+    my_header->asize = 0;
+    my_header->size = new_size;
     // first, try to merge current and next
     hdr_merge(my_header, next);
-/*     if(my_header->size == 0)
-    {
-        return;
-    } */
 
     // then, try to merge previous and current
     hdr_merge(previous, my_header);
-   /*  if(my_header->size == 0)
-    {
-        return;
-    }
-
-    my_header->asize = my_header->size;
-    my_header->size = 0;
-
-    // Jakože fakt neviem ako tu zistit ci sa to freenulo alebo nie
-    // asi som fakt 5IQ */
-
+   
     printf("Freeing\n");
 }
 

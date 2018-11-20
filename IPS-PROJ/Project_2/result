@@ -1,0 +1,2 @@
+./test_mmal
+Makefile:5: recipe for target 'test' failed

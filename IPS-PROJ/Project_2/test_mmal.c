@@ -73,8 +73,6 @@ int main()
     assert(h2->asize == 0);
     printf("First allocation succesfull\n");
 
-    debug_arenas();
-
     /***********************************************************************/
     // Druha alokace
     char *p2 = mmalloc(42);
