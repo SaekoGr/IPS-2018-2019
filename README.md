@@ -8,7 +8,7 @@ Tomáš Sasák
 
 
 Project 1: 10/10<br>
-Project 2: ?/?
+Project 2: 10/10
 
 ## Parallel SED
 PSED behaves exactly same like original SED. But the diffrence, is that every single requested regex owns one own thread and works with the thread until input pipeline is empty.
